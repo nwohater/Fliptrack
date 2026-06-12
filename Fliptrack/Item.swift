@@ -8,11 +8,165 @@
 import Foundation
 import SwiftData
 
+enum ItemStatus: String, CaseIterable, Codable, Identifiable {
+    case unlisted
+    case listed
+    case sold
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .unlisted: "Unlisted"
+        case .listed: "Listed"
+        case .sold: "Sold"
+        }
+    }
+}
+
+enum Platform: String, CaseIterable, Codable, Identifiable {
+    case poshmark
+    case ebay
+    case mercari
+    case vinted
+    case depop
+    case other
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .poshmark: "Poshmark"
+        case .ebay: "eBay"
+        case .mercari: "Mercari"
+        case .vinted: "Vinted"
+        case .depop: "Depop"
+        case .other: "Other"
+        }
+    }
+}
+
 @Model
 final class Item {
-    var timestamp: Date
-    
-    init(timestamp: Date) {
-        self.timestamp = timestamp
+    var itemNumber: String = ""
+    var brand: String?
+    var category: String = ""
+    var itemDescription: String = ""
+    var purchasePrice: Decimal = Decimal()
+    var storageLocation: String = ""
+    var statusRaw: String = ItemStatus.unlisted.rawValue
+    var listingPrice: Decimal?
+    var platformRaw: String?
+    var salePrice: Decimal?
+    var platformFee: Decimal?
+    var profit: Decimal?
+    var dateListed: Date?
+    var dateSold: Date?
+    var dateCreated: Date = Date()
+    var photoData: Data?
+    var notes: String?
+
+    init(
+        itemNumber: String = "",
+        brand: String? = nil,
+        category: String = "",
+        itemDescription: String = "",
+        purchasePrice: Decimal = Decimal(),
+        storageLocation: String = "",
+        status: ItemStatus = .unlisted,
+        listingPrice: Decimal? = nil,
+        platform: Platform? = nil,
+        salePrice: Decimal? = nil,
+        platformFee: Decimal? = nil,
+        profit: Decimal? = nil,
+        dateListed: Date? = nil,
+        dateSold: Date? = nil,
+        dateCreated: Date = Date(),
+        photoData: Data? = nil,
+        notes: String? = nil
+    ) {
+        self.itemNumber = itemNumber
+        self.brand = brand
+        self.category = category
+        self.itemDescription = itemDescription
+        self.purchasePrice = purchasePrice
+        self.storageLocation = storageLocation
+        self.statusRaw = status.rawValue
+        self.listingPrice = listingPrice
+        self.platformRaw = platform?.rawValue
+        self.salePrice = salePrice
+        self.platformFee = platformFee
+        self.profit = profit
+        self.dateListed = dateListed
+        self.dateSold = dateSold
+        self.dateCreated = dateCreated
+        self.photoData = photoData
+        self.notes = notes
+    }
+
+    @Transient
+    var status: ItemStatus {
+        get { ItemStatus(rawValue: statusRaw) ?? .unlisted }
+        set { statusRaw = newValue.rawValue }
+    }
+
+    @Transient
+    var platform: Platform? {
+        get {
+            guard let platformRaw else { return nil }
+            return Platform(rawValue: platformRaw)
+        }
+        set { platformRaw = newValue?.rawValue }
+    }
+}
+
+@Model
+final class Brand {
+    var id: UUID = UUID()
+    var name: String = ""
+    var createdAt: Date = Date()
+
+    init(id: UUID = UUID(), name: String = "", createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+    }
+}
+
+@Model
+final class Category {
+    var id: UUID = UUID()
+    var name: String = ""
+    var sortOrder: Int = 0
+    var isDefault: Bool = false
+    var createdAt: Date = Date()
+
+    init(
+        id: UUID = UUID(),
+        name: String = "",
+        sortOrder: Int = 0,
+        isDefault: Bool = false,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.sortOrder = sortOrder
+        self.isDefault = isDefault
+        self.createdAt = createdAt
+    }
+}
+
+@Model
+final class StorageLocation {
+    var id: UUID = UUID()
+    var name: String = ""
+    var sortOrder: Int = 0
+    var createdAt: Date = Date()
+
+    init(id: UUID = UUID(), name: String = "", sortOrder: Int = 0, createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.sortOrder = sortOrder
+        self.createdAt = createdAt
     }
 }
