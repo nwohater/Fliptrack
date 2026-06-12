@@ -24,28 +24,6 @@ enum ItemStatus: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum Platform: String, CaseIterable, Codable, Identifiable {
-    case poshmark
-    case ebay
-    case mercari
-    case vinted
-    case depop
-    case other
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .poshmark: "Poshmark"
-        case .ebay: "eBay"
-        case .mercari: "Mercari"
-        case .vinted: "Vinted"
-        case .depop: "Depop"
-        case .other: "Other"
-        }
-    }
-}
-
 @Model
 final class Item {
     var itemNumber: String = ""
@@ -75,7 +53,7 @@ final class Item {
         storageLocation: String = "",
         status: ItemStatus = .unlisted,
         listingPrice: Decimal? = nil,
-        platform: Platform? = nil,
+        platformName: String? = nil,
         salePrice: Decimal? = nil,
         platformFee: Decimal? = nil,
         profit: Decimal? = nil,
@@ -93,7 +71,7 @@ final class Item {
         self.storageLocation = storageLocation
         self.statusRaw = status.rawValue
         self.listingPrice = listingPrice
-        self.platformRaw = platform?.rawValue
+        self.platformRaw = platformName
         self.salePrice = salePrice
         self.platformFee = platformFee
         self.profit = profit
@@ -111,12 +89,44 @@ final class Item {
     }
 
     @Transient
-    var platform: Platform? {
+    var platformName: String? {
         get {
             guard let platformRaw else { return nil }
-            return Platform(rawValue: platformRaw)
+            return Self.legacyPlatformNames[platformRaw] ?? platformRaw
         }
-        set { platformRaw = newValue?.rawValue }
+        set { platformRaw = newValue }
+    }
+
+    private static let legacyPlatformNames = [
+        "poshmark": "Poshmark",
+        "ebay": "eBay",
+        "mercari": "Mercari",
+        "vinted": "Vinted",
+        "depop": "Depop",
+        "other": "Other"
+    ]
+}
+
+@Model
+final class SellingPlatform {
+    var id: UUID = UUID()
+    var name: String = ""
+    var sortOrder: Int = 0
+    var isDefault: Bool = false
+    var createdAt: Date = Date()
+
+    init(
+        id: UUID = UUID(),
+        name: String = "",
+        sortOrder: Int = 0,
+        isDefault: Bool = false,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.sortOrder = sortOrder
+        self.isDefault = isDefault
+        self.createdAt = createdAt
     }
 }
 

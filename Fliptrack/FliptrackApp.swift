@@ -16,6 +16,7 @@ struct FliptrackApp: App {
             Brand.self,
             Category.self,
             StorageLocation.self,
+            SellingPlatform.self,
         ])
 
         do {
