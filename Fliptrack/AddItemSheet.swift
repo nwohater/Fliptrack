@@ -321,14 +321,13 @@ struct EditItemSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .disabled(item.status == .sold)
 
                     if status == .listed || status == .sold {
                         TextField("Listing Price", text: $listingPrice)
                             .keyboardType(.decimalPad)
                     }
 
-                    if item.status == .sold {
+                    if status == .sold {
                         LabeledContent("Listed On", value: item.listingPlatforms.joined(separator: ", ").nilIfEmpty ?? "---")
                         LabeledContent("Sold On", value: item.soldPlatformName ?? "---")
                         LabeledContent("Sale Price", value: CurrencyFormatter.string(from: item.salePrice))
@@ -470,6 +469,16 @@ struct EditItemSheet: View {
         item.status = status
         item.listingPrice = status == .listed || status == .sold ? decimal(from: listingPrice) : nil
         item.listingPlatforms = status == .listed || status == .sold ? Array(selectedPlatforms) : []
+        if status != .sold {
+            item.salePrice = nil
+            item.platformFee = nil
+            item.profit = nil
+            item.dateSold = nil
+            item.soldPlatformRaw = nil
+        }
+        if status == .unlisted {
+            item.dateListed = nil
+        }
         item.photoData = photoData
         item.notes = notes.trimmed.nilIfEmpty
         modelContext.insertBrandIfNeeded(brand, existingBrandNames: brands.map(\.name))
