@@ -40,6 +40,7 @@ struct FliptrackApp: App {
         WindowGroup {
             ContentView()
                 .background(Color.butterYellow)
+                .preferredColorScheme(.light)
         }
         .modelContainer(sharedModelContainer)
     }
