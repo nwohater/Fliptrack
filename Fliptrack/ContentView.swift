@@ -357,6 +357,7 @@ struct ListItSheet: View {
                     }
                     .padding(.vertical, 6)
                 }
+                .listRowBackground(Color.white)
 
                 Section("Listing") {
                     TextField("Listing Price", text: $listingPrice)
@@ -370,6 +371,7 @@ struct ListItSheet: View {
                         }
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section {
                     Button(action: listItem) {
@@ -478,6 +480,7 @@ struct MarkAsSoldSheet: View {
                     }
                     .padding(.vertical, 6)
                 }
+                .listRowBackground(Color.white)
 
                 Section("Sale") {
                     TextField("Sale Price", text: $salePrice)
@@ -487,6 +490,7 @@ struct MarkAsSoldSheet: View {
                         .keyboardType(.decimalPad)
                         .foregroundStyle(Color.lossRed)
                 }
+                .listRowBackground(Color.white)
 
                 if let liveProfit {
                     Section {

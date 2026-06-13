@@ -47,6 +47,7 @@ struct AddItemSheet: View {
                             .textSelection(.enabled)
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Item") {
                     BrandAutocompleteField(brand: $brand, options: brandOptions)
@@ -65,6 +66,7 @@ struct AddItemSheet: View {
                     TextField("Purchase Price", text: $purchasePrice)
                         .keyboardType(.decimalPad)
                 }
+                .listRowBackground(Color.white)
 
                 Section("Storage") {
                     Picker("Location", selection: $storageLocation) {
@@ -74,6 +76,7 @@ struct AddItemSheet: View {
                         }
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Status") {
                     Picker("Status", selection: $status) {
@@ -98,11 +101,13 @@ struct AddItemSheet: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
+                .listRowBackground(Color.white)
             }
             .scrollContentBackground(.hidden)
             .background(Color.butterYellow)
@@ -238,14 +243,17 @@ struct EditItemSheet: View {
     @State private var notes = ""
     @State private var photoData: Data?
     @State private var isShowingPhotoOptions = false
+    @State private var isShowingFullPhoto = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    PhotoField(photoData: photoData) {
+                    PhotoField(photoData: photoData, action: {
                         isShowingPhotoOptions = true
-                    }
+                    }, viewAction: photoData != nil ? {
+                        isShowingFullPhoto = true
+                    } : nil)
 
                     HStack {
                         Text("Item Number")
@@ -255,6 +263,7 @@ struct EditItemSheet: View {
                             .textSelection(.enabled)
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Item") {
                     BrandAutocompleteField(brand: $brand, options: brandOptions)
@@ -273,6 +282,7 @@ struct EditItemSheet: View {
                     TextField("Purchase Price", text: $purchasePrice)
                         .keyboardType(.decimalPad)
                 }
+                .listRowBackground(Color.white)
 
                 Section("Storage") {
                     Picker("Location", selection: $storageLocation) {
@@ -282,6 +292,7 @@ struct EditItemSheet: View {
                         }
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Status") {
                     Picker("Status", selection: $status) {
@@ -310,11 +321,13 @@ struct EditItemSheet: View {
                         LabeledContent("Net Profit", value: CurrencyFormatter.signedString(from: item.profit))
                     }
                 }
+                .listRowBackground(Color.white)
 
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
+                .listRowBackground(Color.white)
             }
             .scrollContentBackground(.hidden)
             .background(Color.butterYellow)
@@ -340,6 +353,13 @@ struct EditItemSheet: View {
                 }
             }
             .photoPickerActionSheet(photoData: $photoData, isPresented: $isShowingPhotoOptions)
+            .fullScreenCover(isPresented: $isShowingFullPhoto) {
+                if let data = photoData, let image = UIImage(data: data) {
+                    FullScreenPhotoView(image: image, onEdit: {
+                        isShowingPhotoOptions = true
+                    })
+                }
+            }
         }
         .presentationDetents([.large])
     }
@@ -563,10 +583,12 @@ private struct PhotoPickerActionSheet: ViewModifier {
 private struct PhotoField: View {
     let photoData: Data?
     let action: () -> Void
+    var viewAction: (() -> Void)? = nil
 
     var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottomTrailing) {
+            // Main tap: view full-screen if photo exists and viewAction provided, else open picker
+            Button(action: image != nil ? (viewAction ?? action) : action) {
                 Group {
                     if let image {
                         Image(uiImage: image)
@@ -589,25 +611,86 @@ private struct PhotoField: View {
                 }
                 .frame(width: 92, height: 92)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(photoData == nil ? "Add item photo" : "View item photo")
 
-                if image != nil {
+            // Camera overlay always opens the edit action sheet
+            if image != nil {
+                Button(action: action) {
                     Image(systemName: "camera.fill")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
                         .background(Color.hotPink, in: Circle())
                         .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .offset(x: 6, y: 6)
                 }
+                .buttonStyle(.plain)
+                .offset(x: 6, y: 6)
+                .accessibilityLabel("Change item photo")
             }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(photoData == nil ? "Add item photo" : "Change item photo")
     }
 
     private var image: UIImage? {
         guard let photoData else { return nil }
         return UIImage(data: photoData)
+    }
+}
+
+struct FullScreenPhotoView: View {
+    let image: UIImage
+    let onEdit: (() -> Void)?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .ignoresSafeArea(edges: .bottom)
+
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.4), radius: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close photo")
+
+                    Spacer()
+
+                    if let onEdit {
+                        Button {
+                            dismiss()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                onEdit()
+                            }
+                        } label: {
+                            Label("Edit Photo", systemImage: "camera.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.hotPink, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit photo")
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                Spacer()
+            }
+        }
     }
 }
 
