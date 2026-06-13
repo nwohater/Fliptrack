@@ -952,6 +952,7 @@ private extension String {
 struct ReportsView: View {
     @Query(sort: \Item.dateCreated, order: .reverse) private var items: [Item]
     @State private var selectedTimeFilter: ReportsTimeFilter = .allTime
+    @State private var itemToEdit: Item?
 
     private var soldItems: [Item] {
         items
@@ -1140,14 +1141,19 @@ struct ReportsView: View {
                         )
                         .padding(.horizontal)
 
-                        RecentSalesSection(items: Array(filteredSoldItems.prefix(5)))
-                            .padding(.horizontal)
+                        RecentSalesSection(items: Array(filteredSoldItems.prefix(5))) { item in
+                            itemToEdit = item
+                        }
+                        .padding(.horizontal)
                     }
                 }
                 .padding(.bottom, 110)
             }
             .background(Color.butterYellow.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(item: $itemToEdit) { item in
+                EditItemSheet(item: item)
+            }
         }
     }
 
@@ -1751,6 +1757,7 @@ struct StatusCountPill: View {
 
 struct RecentSalesSection: View {
     let items: [Item]
+    var onTap: ((Item) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1775,6 +1782,7 @@ struct RecentSalesSection: View {
                 VStack(spacing: 10) {
                     ForEach(items) { item in
                         RecentSaleRow(item: item)
+                            .onTapGesture { onTap?(item) }
                     }
                 }
             }
@@ -1810,10 +1818,15 @@ struct RecentSaleRow: View {
                 .foregroundStyle((item.profit ?? Decimal()) < 0 ? Color.lossRed : Color.profitGreen)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.secondaryText.opacity(0.5))
         }
         .padding(12)
         .background(.white, in: RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.05), radius: 9, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 18))
     }
 
     private var saleDetail: String {
