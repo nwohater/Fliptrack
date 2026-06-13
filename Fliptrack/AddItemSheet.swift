@@ -26,7 +26,7 @@ struct AddItemSheet: View {
     @State private var storageLocation = ""
     @State private var status: ItemStatus = .unlisted
     @State private var listingPrice = ""
-    @State private var platform = ""
+    @State private var selectedPlatforms: Set<String> = []
     @State private var notes = ""
     @State private var photoData: Data?
     @State private var isShowingPhotoOptions = false
@@ -89,19 +89,39 @@ struct AddItemSheet: View {
                         TextField("Listing Price", text: $listingPrice)
                             .keyboardType(.decimalPad)
 
-                        Picker("Platform", selection: $platform) {
-                            Text("Select").tag("")
-                            ForEach(platformOptions, id: \.self) { platform in
-                                Text(platform).tag(platform)
-                            }
-                        }
-
                         Text("Listing date is set automatically when you save as Listed")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .listRowBackground(Color.white)
+
+                if status == .listed {
+                    Section("Platforms (select all that apply)") {
+                        ForEach(platformOptions, id: \.self) { name in
+                            Button {
+                                if selectedPlatforms.contains(name) {
+                                    selectedPlatforms.remove(name)
+                                } else {
+                                    selectedPlatforms.insert(name)
+                                }
+                            } label: {
+                                HStack {
+                                    Text(name)
+                                        .foregroundStyle(Color.primaryText)
+                                    Spacer()
+                                    if selectedPlatforms.contains(name) {
+                                        Image(systemName: "checkmark")
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(Color.hotPink)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .listRowBackground(Color.white)
+                }
 
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
@@ -129,7 +149,7 @@ struct AddItemSheet: View {
             .onChange(of: status) { _, newStatus in
                 if newStatus == .unlisted {
                     listingPrice = ""
-                    platform = ""
+                    selectedPlatforms = []
                 }
             }
             .photoPickerActionSheet(photoData: $photoData, isPresented: $isShowingPhotoOptions)
@@ -165,7 +185,7 @@ struct AddItemSheet: View {
             (status == .listed && (
                     decimal(from: listingPrice) == nil ||
                     decimal(from: listingPrice).map { $0 <= 0 } == true ||
-                    platform.isEmpty
+                    selectedPlatforms.isEmpty
             ))
     }
 
@@ -192,7 +212,7 @@ struct AddItemSheet: View {
             storageLocation: storageLocation,
             status: status,
             listingPrice: status == .listed ? decimal(from: listingPrice) : nil,
-            platformName: status == .listed ? platform : nil,
+            listingPlatforms: status == .listed ? Array(selectedPlatforms) : [],
             dateListed: status == .listed ? now : nil,
             dateCreated: now,
             photoData: photoData,
@@ -239,7 +259,7 @@ struct EditItemSheet: View {
     @State private var storageLocation = ""
     @State private var status: ItemStatus = .unlisted
     @State private var listingPrice = ""
-    @State private var platform = ""
+    @State private var selectedPlatforms: Set<String> = []
     @State private var notes = ""
     @State private var photoData: Data?
     @State private var isShowingPhotoOptions = false
@@ -306,22 +326,44 @@ struct EditItemSheet: View {
                     if status == .listed || status == .sold {
                         TextField("Listing Price", text: $listingPrice)
                             .keyboardType(.decimalPad)
-
-                        Picker("Platform", selection: $platform) {
-                            Text("Select").tag("")
-                            ForEach(platformOptions, id: \.self) { platform in
-                                Text(platform).tag(platform)
-                            }
-                        }
                     }
 
                     if item.status == .sold {
+                        LabeledContent("Listed On", value: item.listingPlatforms.joined(separator: ", ").nilIfEmpty ?? "---")
+                        LabeledContent("Sold On", value: item.soldPlatformName ?? "---")
                         LabeledContent("Sale Price", value: CurrencyFormatter.string(from: item.salePrice))
                         LabeledContent("Platform Fee", value: CurrencyFormatter.string(from: item.platformFee))
                         LabeledContent("Net Profit", value: CurrencyFormatter.signedString(from: item.profit))
                     }
                 }
                 .listRowBackground(Color.white)
+
+                if status == .listed {
+                    Section("Platforms (select all that apply)") {
+                        ForEach(platformOptions, id: \.self) { name in
+                            Button {
+                                if selectedPlatforms.contains(name) {
+                                    selectedPlatforms.remove(name)
+                                } else {
+                                    selectedPlatforms.insert(name)
+                                }
+                            } label: {
+                                HStack {
+                                    Text(name)
+                                        .foregroundStyle(Color.primaryText)
+                                    Spacer()
+                                    if selectedPlatforms.contains(name) {
+                                        Image(systemName: "checkmark")
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(Color.hotPink)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .listRowBackground(Color.white)
+                }
 
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
@@ -349,7 +391,7 @@ struct EditItemSheet: View {
             .onChange(of: status) { _, newStatus in
                 if newStatus == .unlisted {
                     listingPrice = ""
-                    platform = ""
+                    selectedPlatforms = []
                 }
             }
             .photoPickerActionSheet(photoData: $photoData, isPresented: $isShowingPhotoOptions)
@@ -382,8 +424,9 @@ struct EditItemSheet: View {
 
     private var platformOptions: [String] {
         let seeded = sellingPlatforms.sorted { $0.sortOrder < $1.sortOrder }.map(\.name)
-        let options = seeded.isEmpty ? SeedData.defaultPlatforms : seeded
-        return mergedOptions(options, currentValue: platform)
+        let base = seeded.isEmpty ? SeedData.defaultPlatforms : seeded
+        let extras = selectedPlatforms.filter { base.contains($0) == false }.sorted()
+        return extras + base
     }
 
     private var isSaveDisabled: Bool {
@@ -392,10 +435,10 @@ struct EditItemSheet: View {
             storageLocation.isEmpty ||
             decimal(from: purchasePrice) == nil ||
             decimal(from: purchasePrice).map { $0 <= 0 } == true ||
-            ((status == .listed || status == .sold) && (
+            ((status == .listed) && (
                     decimal(from: listingPrice) == nil ||
                     decimal(from: listingPrice).map { $0 <= 0 } == true ||
-                    platform.isEmpty
+                    selectedPlatforms.isEmpty
             ))
     }
 
@@ -411,7 +454,7 @@ struct EditItemSheet: View {
         } else {
             listingPrice = ""
         }
-        platform = item.platformName ?? ""
+        selectedPlatforms = Set(item.listingPlatforms)
         notes = item.notes ?? ""
         photoData = item.photoData
     }
@@ -426,7 +469,7 @@ struct EditItemSheet: View {
         item.storageLocation = storageLocation
         item.status = status
         item.listingPrice = status == .listed || status == .sold ? decimal(from: listingPrice) : nil
-        item.platformName = status == .listed || status == .sold ? platform : nil
+        item.listingPlatforms = status == .listed || status == .sold ? Array(selectedPlatforms) : []
         item.photoData = photoData
         item.notes = notes.trimmed.nilIfEmpty
         modelContext.insertBrandIfNeeded(brand, existingBrandNames: brands.map(\.name))

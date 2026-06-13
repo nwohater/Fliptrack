@@ -216,7 +216,7 @@ struct InventoryView: View {
                     itemToUnlist = nil
                 }
             } message: {
-                Text("This clears the listing price, platform, and listing date.")
+                Text("This clears the listing price, platforms, and listing date.")
             }
             .confirmationDialog(
                 "Delete Item?",
@@ -320,7 +320,7 @@ struct InventoryView: View {
 
         itemToUnlist.status = .unlisted
         itemToUnlist.listingPrice = nil
-        itemToUnlist.platformName = nil
+        itemToUnlist.listingPlatformsRaw = nil
         itemToUnlist.dateListed = nil
         self.itemToUnlist = nil
 
@@ -339,7 +339,7 @@ struct ListItSheet: View {
 
     let item: Item
     @State private var listingPrice = ""
-    @State private var platform = ""
+    @State private var selectedPlatforms: Set<String> = []
 
     var body: some View {
         NavigationStack {
@@ -359,16 +359,34 @@ struct ListItSheet: View {
                 }
                 .listRowBackground(Color.white)
 
-                Section("Listing") {
+                Section("Listing Price") {
                     TextField("Listing Price", text: $listingPrice)
                         .font(.title3.weight(.bold))
                         .keyboardType(.decimalPad)
+                }
+                .listRowBackground(Color.white)
 
-                    Picker("Platform", selection: $platform) {
-                        Text("Select").tag("")
-                        ForEach(platformOptions, id: \.self) { platform in
-                            Text(platform).tag(platform)
+                Section("Platforms (select all that apply)") {
+                    ForEach(platformOptions, id: \.self) { name in
+                        Button {
+                            if selectedPlatforms.contains(name) {
+                                selectedPlatforms.remove(name)
+                            } else {
+                                selectedPlatforms.insert(name)
+                            }
+                        } label: {
+                            HStack {
+                                Text(name)
+                                    .foregroundStyle(Color.primaryText)
+                                Spacer()
+                                if selectedPlatforms.contains(name) {
+                                    Image(systemName: "checkmark")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(Color.hotPink)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .listRowBackground(Color.white)
@@ -400,34 +418,31 @@ struct ListItSheet: View {
                     listingPrice = CurrencyFormatter.editingString(from: existingPrice)
                 }
 
-                if platform.isEmpty {
-                    platform = item.platformName ?? ""
+                if selectedPlatforms.isEmpty {
+                    selectedPlatforms = Set(item.listingPlatforms)
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
     }
 
     private var platformOptions: [String] {
         let seeded = sellingPlatforms.sorted { $0.sortOrder < $1.sortOrder }.map(\.name)
-        let options = seeded.isEmpty ? SeedData.defaultPlatforms : seeded
-        guard platform.isEmpty == false, options.contains(platform) == false else {
-            return options
-        }
-
-        return [platform] + options
+        let base = seeded.isEmpty ? SeedData.defaultPlatforms : seeded
+        let extras = selectedPlatforms.filter { base.contains($0) == false }.sorted()
+        return extras + base
     }
 
     private var isConfirmDisabled: Bool {
-        decimal(from: listingPrice).map { $0 > 0 } != true || platform.isEmpty
+        decimal(from: listingPrice).map { $0 > 0 } != true || selectedPlatforms.isEmpty
     }
 
     private func listItem() {
-        guard let listingPrice = decimal(from: listingPrice), platform.isEmpty == false else { return }
+        guard let listingPrice = decimal(from: listingPrice), selectedPlatforms.isEmpty == false else { return }
 
         item.status = .listed
         item.listingPrice = listingPrice
-        item.platformName = platform
+        item.listingPlatforms = Array(selectedPlatforms)
         item.dateListed = Date()
 
         do {
@@ -446,6 +461,7 @@ struct MarkAsSoldSheet: View {
     let item: Item
     @State private var salePrice = ""
     @State private var platformFee = ""
+    @State private var soldPlatform = ""
 
     private var parsedSalePrice: Decimal? {
         decimal(from: salePrice)
@@ -491,6 +507,18 @@ struct MarkAsSoldSheet: View {
                         .foregroundStyle(Color.lossRed)
                 }
                 .listRowBackground(Color.white)
+
+                if item.listingPlatforms.isEmpty == false {
+                    Section("Sold On") {
+                        Picker("Platform", selection: $soldPlatform) {
+                            Text("Select").tag("")
+                            ForEach(item.listingPlatforms, id: \.self) { platform in
+                                Text(platform).tag(platform)
+                            }
+                        }
+                    }
+                    .listRowBackground(Color.white)
+                }
 
                 if let liveProfit {
                     Section {
@@ -550,6 +578,9 @@ struct MarkAsSoldSheet: View {
                 if salePrice.isEmpty, let listingPrice = item.listingPrice {
                     salePrice = CurrencyFormatter.editingString(from: listingPrice)
                 }
+                if soldPlatform.isEmpty && item.listingPlatforms.count == 1 {
+                    soldPlatform = item.listingPlatforms[0]
+                }
             }
         }
         .presentationDetents([.medium, .large])
@@ -557,7 +588,8 @@ struct MarkAsSoldSheet: View {
 
     private var isConfirmDisabled: Bool {
         parsedSalePrice.map { $0 > 0 } != true ||
-            parsedPlatformFee.map { $0 >= 0 } != true
+            parsedPlatformFee.map { $0 >= 0 } != true ||
+            (item.listingPlatforms.isEmpty == false && soldPlatform.isEmpty)
     }
 
     private func markSold() {
@@ -567,6 +599,7 @@ struct MarkAsSoldSheet: View {
         item.salePrice = parsedSalePrice
         item.platformFee = parsedPlatformFee
         item.profit = liveProfit
+        item.soldPlatformName = soldPlatform.isEmpty ? nil : soldPlatform
         item.dateSold = Date()
 
         do {

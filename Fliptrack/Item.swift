@@ -34,7 +34,8 @@ final class Item {
     var storageLocation: String = ""
     var statusRaw: String = ItemStatus.unlisted.rawValue
     var listingPrice: Decimal?
-    var platformRaw: String?
+    var listingPlatformsRaw: String?
+    var soldPlatformRaw: String?
     var salePrice: Decimal?
     var platformFee: Decimal?
     var profit: Decimal?
@@ -53,7 +54,8 @@ final class Item {
         storageLocation: String = "",
         status: ItemStatus = .unlisted,
         listingPrice: Decimal? = nil,
-        platformName: String? = nil,
+        listingPlatforms: [String] = [],
+        soldPlatformName: String? = nil,
         salePrice: Decimal? = nil,
         platformFee: Decimal? = nil,
         profit: Decimal? = nil,
@@ -71,7 +73,8 @@ final class Item {
         self.storageLocation = storageLocation
         self.statusRaw = status.rawValue
         self.listingPrice = listingPrice
-        self.platformRaw = platformName
+        self.listingPlatformsRaw = listingPlatforms.isEmpty ? nil : listingPlatforms.joined(separator: ",")
+        self.soldPlatformRaw = soldPlatformName
         self.salePrice = salePrice
         self.platformFee = platformFee
         self.profit = profit
@@ -89,22 +92,21 @@ final class Item {
     }
 
     @Transient
-    var platformName: String? {
+    var listingPlatforms: [String] {
         get {
-            guard let platformRaw else { return nil }
-            return Self.legacyPlatformNames[platformRaw] ?? platformRaw
+            guard let listingPlatformsRaw, listingPlatformsRaw.isEmpty == false else { return [] }
+            return listingPlatformsRaw.components(separatedBy: ",").filter { $0.isEmpty == false }
         }
-        set { platformRaw = newValue }
+        set {
+            listingPlatformsRaw = newValue.isEmpty ? nil : newValue.joined(separator: ",")
+        }
     }
 
-    private static let legacyPlatformNames = [
-        "poshmark": "Poshmark",
-        "ebay": "eBay",
-        "mercari": "Mercari",
-        "vinted": "Vinted",
-        "depop": "Depop",
-        "other": "Other"
-    ]
+    @Transient
+    var soldPlatformName: String? {
+        get { soldPlatformRaw }
+        set { soldPlatformRaw = newValue }
+    }
 }
 
 @Model
