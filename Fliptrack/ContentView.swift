@@ -360,9 +360,15 @@ struct ListItSheet: View {
                 .listRowBackground(Color.white)
 
                 Section("Listing Price") {
-                    TextField("Listing Price", text: $listingPrice)
-                        .font(.title3.weight(.bold))
-                        .keyboardType(.decimalPad)
+                    HStack {
+                        Text("Listing Price")
+                            .font(.title3.weight(.bold))
+                        Spacer()
+                        TextField("0.00", text: $listingPrice)
+                            .font(.title3.weight(.bold))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 .listRowBackground(Color.white)
 
@@ -499,12 +505,23 @@ struct MarkAsSoldSheet: View {
                 .listRowBackground(Color.white)
 
                 Section("Sale") {
-                    TextField("Sale Price", text: $salePrice)
-                        .keyboardType(.decimalPad)
+                    HStack {
+                        Text("Sale Price")
+                        Spacer()
+                        TextField("0.00", text: $salePrice)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
 
-                    TextField("Platform Fee (enter 0 if none)", text: $platformFee)
-                        .keyboardType(.decimalPad)
-                        .foregroundStyle(Color.lossRed)
+                    HStack {
+                        Text("Platform Fee")
+                            .foregroundStyle(Color.lossRed)
+                        Spacer()
+                        TextField("0.00", text: $platformFee)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(Color.lossRed)
+                    }
                 }
                 .listRowBackground(Color.white)
 

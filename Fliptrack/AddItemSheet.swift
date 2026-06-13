@@ -59,12 +59,22 @@ struct AddItemSheet: View {
                         }
                     }
 
-                    TextField("Description", text: $itemDescription, axis: .vertical)
-                        .lineLimit(2...4)
-                        .textInputAutocapitalization(.sentences)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Description")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.secondaryText)
+                        TextField("", text: $itemDescription, axis: .vertical)
+                            .lineLimit(2...4)
+                            .textInputAutocapitalization(.sentences)
+                    }
 
-                    TextField("Purchase Price", text: $purchasePrice)
-                        .keyboardType(.decimalPad)
+                    HStack {
+                        Text("Purchase Price")
+                        Spacer()
+                        TextField("0.00", text: $purchasePrice)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 .listRowBackground(Color.white)
 
@@ -86,8 +96,13 @@ struct AddItemSheet: View {
                     .pickerStyle(.segmented)
 
                     if status == .listed {
-                        TextField("Listing Price", text: $listingPrice)
-                            .keyboardType(.decimalPad)
+                        HStack {
+                            Text("Listing Price")
+                            Spacer()
+                            TextField("0.00", text: $listingPrice)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                        }
 
                         Text("Listing date is set automatically when you save as Listed")
                             .font(.footnote)
@@ -124,8 +139,13 @@ struct AddItemSheet: View {
                 }
 
                 Section("Notes") {
-                    TextField("Optional notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Notes")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.secondaryText)
+                        TextField("Optional", text: $notes, axis: .vertical)
+                            .lineLimit(3...6)
+                    }
                 }
                 .listRowBackground(Color.white)
             }
@@ -295,12 +315,22 @@ struct EditItemSheet: View {
                         }
                     }
 
-                    TextField("Description", text: $itemDescription, axis: .vertical)
-                        .lineLimit(2...4)
-                        .textInputAutocapitalization(.sentences)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Description")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.secondaryText)
+                        TextField("", text: $itemDescription, axis: .vertical)
+                            .lineLimit(2...4)
+                            .textInputAutocapitalization(.sentences)
+                    }
 
-                    TextField("Purchase Price", text: $purchasePrice)
-                        .keyboardType(.decimalPad)
+                    HStack {
+                        Text("Purchase Price")
+                        Spacer()
+                        TextField("0.00", text: $purchasePrice)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 .listRowBackground(Color.white)
 
@@ -365,8 +395,13 @@ struct EditItemSheet: View {
                 }
 
                 Section("Notes") {
-                    TextField("Optional notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Notes")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.secondaryText)
+                        TextField("Optional", text: $notes, axis: .vertical)
+                            .lineLimit(3...6)
+                    }
                 }
                 .listRowBackground(Color.white)
             }
@@ -565,8 +600,14 @@ private struct BrandAutocompleteField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Brand", text: $brand)
-                .textInputAutocapitalization(.words)
+            HStack {
+                Text("Brand")
+                    .foregroundStyle(Color.primaryText)
+                Spacer()
+                TextField("Optional", text: $brand)
+                    .multilineTextAlignment(.trailing)
+                    .textInputAutocapitalization(.words)
+            }
 
             if suggestions.isEmpty == false {
                 ScrollView(.horizontal, showsIndicators: false) {
