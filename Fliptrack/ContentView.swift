@@ -78,7 +78,7 @@ struct AppBrandText: View {
             + Text("track")
                 .foregroundStyle(Color.electricPurple)
         )
-            .font(.headline.weight(.heavy))
+            .font(.title2.weight(.heavy))
             .accessibilityAddTraits(.isHeader)
             .accessibilityLabel("fliptrack")
     }
