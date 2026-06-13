@@ -360,15 +360,8 @@ struct ListItSheet: View {
                 .listRowBackground(Color.white)
 
                 Section("Listing Price") {
-                    HStack {
-                        Text("Listing Price")
-                            .font(.title3.weight(.bold))
-                        Spacer()
-                        TextField("0.00", text: $listingPrice)
-                            .font(.title3.weight(.bold))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    CurrencyTextField(label: "Listing Price", text: $listingPrice)
+                        .font(.title3.weight(.bold))
                 }
                 .listRowBackground(Color.white)
 
@@ -421,7 +414,7 @@ struct ListItSheet: View {
             }
             .onAppear {
                 if listingPrice.isEmpty, let existingPrice = item.listingPrice {
-                    listingPrice = CurrencyFormatter.editingString(from: existingPrice)
+                    listingPrice = CurrencyFormatter.string(from: existingPrice)
                 }
 
                 if selectedPlatforms.isEmpty {
@@ -505,23 +498,9 @@ struct MarkAsSoldSheet: View {
                 .listRowBackground(Color.white)
 
                 Section("Sale") {
-                    HStack {
-                        Text("Sale Price")
-                        Spacer()
-                        TextField("0.00", text: $salePrice)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    CurrencyTextField(label: "Sale Price", text: $salePrice)
 
-                    HStack {
-                        Text("Platform Fee")
-                            .foregroundStyle(Color.lossRed)
-                        Spacer()
-                        TextField("0.00", text: $platformFee)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(Color.lossRed)
-                    }
+                    CurrencyTextField(label: "Platform Fee", text: $platformFee, color: Color.lossRed)
                 }
                 .listRowBackground(Color.white)
 
@@ -593,7 +572,7 @@ struct MarkAsSoldSheet: View {
             }
             .onAppear {
                 if salePrice.isEmpty, let listingPrice = item.listingPrice {
-                    salePrice = CurrencyFormatter.editingString(from: listingPrice)
+                    salePrice = CurrencyFormatter.string(from: listingPrice)
                 }
                 if soldPlatform.isEmpty && item.listingPlatforms.count == 1 {
                     soldPlatform = item.listingPlatforms[0]

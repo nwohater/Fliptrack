@@ -68,13 +68,7 @@ struct AddItemSheet: View {
                             .textInputAutocapitalization(.sentences)
                     }
 
-                    HStack {
-                        Text("Purchase Price")
-                        Spacer()
-                        TextField("0.00", text: $purchasePrice)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    CurrencyTextField(label: "Purchase Price", text: $purchasePrice)
                 }
                 .listRowBackground(Color.white)
 
@@ -96,13 +90,7 @@ struct AddItemSheet: View {
                     .pickerStyle(.segmented)
 
                     if status == .listed {
-                        HStack {
-                            Text("Listing Price")
-                            Spacer()
-                            TextField("0.00", text: $listingPrice)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                        }
+                        CurrencyTextField(label: "Listing Price", text: $listingPrice)
 
                         Text("Listing date is set automatically when you save as Listed")
                             .font(.footnote)
@@ -324,13 +312,7 @@ struct EditItemSheet: View {
                             .textInputAutocapitalization(.sentences)
                     }
 
-                    HStack {
-                        Text("Purchase Price")
-                        Spacer()
-                        TextField("0.00", text: $purchasePrice)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    CurrencyTextField(label: "Purchase Price", text: $purchasePrice)
                 }
                 .listRowBackground(Color.white)
 
@@ -353,8 +335,7 @@ struct EditItemSheet: View {
                     .pickerStyle(.segmented)
 
                     if status == .listed || status == .sold {
-                        TextField("Listing Price", text: $listingPrice)
-                            .keyboardType(.decimalPad)
+                        CurrencyTextField(label: "Listing Price", text: $listingPrice)
                     }
 
                     if status == .sold {
@@ -480,11 +461,11 @@ struct EditItemSheet: View {
         brand = item.brand ?? ""
         category = item.category
         itemDescription = item.itemDescription
-        purchasePrice = CurrencyFormatter.editingString(from: item.purchasePrice)
+        purchasePrice = CurrencyFormatter.string(from: item.purchasePrice)
         storageLocation = item.storageLocation
         status = item.status
         if let existingListingPrice = item.listingPrice {
-            listingPrice = CurrencyFormatter.editingString(from: existingListingPrice)
+            listingPrice = CurrencyFormatter.string(from: existingListingPrice)
         } else {
             listingPrice = ""
         }
@@ -542,6 +523,45 @@ struct EditItemSheet: View {
 
         guard sanitized.isEmpty == false else { return nil }
         return Decimal(string: sanitized, locale: Locale.current) ?? Decimal(string: sanitized)
+    }
+}
+
+struct CurrencyTextField: View {
+    let label: String
+    @Binding var text: String
+    var color: Color = Color.primaryText
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("0.00", text: $text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .focused($focused)
+                .onChange(of: focused) { _, isFocused in
+                    if isFocused == false { formatAsCurrency() }
+                }
+        }
+        .foregroundStyle(color)
+    }
+
+    private func formatAsCurrency() {
+        let sanitized = text
+            .replacingOccurrences(of: "$", with: "")
+            .replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard sanitized.isEmpty == false,
+              let val = Decimal(string: sanitized, locale: .current) ?? Decimal(string: sanitized) else {
+            return
+        }
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        text = formatter.string(from: val as NSDecimalNumber) ?? text
     }
 }
 
