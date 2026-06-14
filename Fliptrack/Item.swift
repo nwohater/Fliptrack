@@ -41,6 +41,7 @@ final class Item {
     var profit: Decimal?
     var dateListed: Date?
     var dateSold: Date?
+    var shippedAt: Date?
     var dateCreated: Date = Date()
     var photoData: Data?
     var notes: String?
@@ -61,6 +62,7 @@ final class Item {
         profit: Decimal? = nil,
         dateListed: Date? = nil,
         dateSold: Date? = nil,
+        shippedAt: Date? = nil,
         dateCreated: Date = Date(),
         photoData: Data? = nil,
         notes: String? = nil
@@ -80,6 +82,7 @@ final class Item {
         self.profit = profit
         self.dateListed = dateListed
         self.dateSold = dateSold
+        self.shippedAt = shippedAt
         self.dateCreated = dateCreated
         self.photoData = photoData
         self.notes = notes

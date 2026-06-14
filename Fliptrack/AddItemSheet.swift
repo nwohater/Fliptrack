@@ -35,17 +35,14 @@ struct AddItemSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    PhotoField(photoData: photoData) {
-                        isShowingPhotoOptions = true
-                    }
-
-                    HStack {
-                        Text("Item Number")
-                        Spacer()
-                        Text(ItemNumberGenerator.previewNextItemNumber())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
+                    ItemPhotoHero(
+                        photoData: photoData,
+                        action: { isShowingPhotoOptions = true },
+                        itemNumber: ItemNumberGenerator.previewNextItemNumber(),
+                        brand: brand.trimmed.nilIfEmpty,
+                        itemDescription: itemDescription.trimmed.nilIfEmpty
+                    )
+                    .listRowInsets(EdgeInsets())
                 }
                 .listRowBackground(Color.white)
 
@@ -212,7 +209,7 @@ struct AddItemSheet: View {
         let now = Date()
 
         let item = Item(
-            itemNumber: ItemNumberGenerator.nextItemNumber(date: now),
+            itemNumber: ItemNumberGenerator.nextItemNumber(),
             brand: brand.trimmed.nilIfEmpty,
             category: category,
             itemDescription: itemDescription.trimmed,
@@ -272,24 +269,24 @@ struct EditItemSheet: View {
     @State private var photoData: Data?
     @State private var isShowingPhotoOptions = false
     @State private var isShowingFullPhoto = false
+    @State private var isShipped = false
+    @State private var salePrice = ""
+    @State private var platformFee = ""
+    @State private var soldPlatform = ""
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    PhotoField(photoData: photoData, action: {
-                        isShowingPhotoOptions = true
-                    }, viewAction: photoData != nil ? {
-                        isShowingFullPhoto = true
-                    } : nil)
-
-                    HStack {
-                        Text("Item Number")
-                        Spacer()
-                        Text(item.itemNumber)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
+                    ItemPhotoHero(
+                        photoData: photoData,
+                        action: { isShowingPhotoOptions = true },
+                        viewAction: photoData != nil ? { isShowingFullPhoto = true } : nil,
+                        itemNumber: item.itemNumber,
+                        brand: brand.trimmed.nilIfEmpty,
+                        itemDescription: itemDescription.trimmed.nilIfEmpty
+                    )
+                    .listRowInsets(EdgeInsets())
                 }
                 .listRowBackground(Color.white)
 
@@ -339,11 +336,41 @@ struct EditItemSheet: View {
                     }
 
                     if status == .sold {
-                        LabeledContent("Listed On", value: item.listingPlatforms.joined(separator: ", ").nilIfEmpty ?? "---")
-                        LabeledContent("Sold On", value: item.soldPlatformName ?? "---")
-                        LabeledContent("Sale Price", value: CurrencyFormatter.string(from: item.salePrice))
-                        LabeledContent("Platform Fee", value: CurrencyFormatter.string(from: item.platformFee))
-                        LabeledContent("Net Profit", value: CurrencyFormatter.signedString(from: item.profit))
+                        if currentListingPlatforms.isEmpty == false {
+                            LabeledContent("Listed On", value: currentListingPlatforms.joined(separator: ", "))
+
+                            Picker("Sold On", selection: $soldPlatform) {
+                                Text("Select").tag("")
+                                ForEach(currentListingPlatforms, id: \.self) { platform in
+                                    Text(platform).tag(platform)
+                                }
+                            }
+                        }
+
+                        CurrencyTextField(label: "Sale Price", text: $salePrice)
+                        CurrencyTextField(label: "Platform Fee", text: $platformFee, color: Color.lossRed)
+
+                        if let profit = editLiveProfit {
+                            HStack {
+                                Text("Net Profit")
+                                Spacer()
+                                Text(CurrencyFormatter.signedString(from: profit))
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(profit < 0 ? Color.lossRed : Color.profitGreen)
+                            }
+                        }
+
+                        Toggle(isOn: $isShipped) {
+                            HStack(spacing: 6) {
+                                Text("Shipped")
+                                if let shippedAt = item.shippedAt, isShipped {
+                                    Text(shippedAt.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.caption)
+                                        .foregroundStyle(Color.secondaryText)
+                                }
+                            }
+                        }
+                        .tint(Color.profitGreen)
                     }
                 }
                 .listRowBackground(Color.white)
@@ -407,6 +434,17 @@ struct EditItemSheet: View {
                 if newStatus == .unlisted {
                     listingPrice = ""
                     selectedPlatforms = []
+                    salePrice = ""
+                    platformFee = ""
+                    soldPlatform = ""
+                }
+                if newStatus == .sold {
+                    if salePrice.isEmpty && listingPrice.isEmpty == false {
+                        salePrice = listingPrice
+                    }
+                    if soldPlatform.isEmpty && currentListingPlatforms.count == 1 {
+                        soldPlatform = currentListingPlatforms[0]
+                    }
                 }
             }
             .photoPickerActionSheet(photoData: $photoData, isPresented: $isShowingPhotoOptions)
@@ -444,6 +482,18 @@ struct EditItemSheet: View {
         return extras + base
     }
 
+    private var currentListingPlatforms: [String] {
+        let fromState = Array(selectedPlatforms).sorted()
+        return fromState.isEmpty ? item.listingPlatforms : fromState
+    }
+
+    private var editLiveProfit: Decimal? {
+        guard let sp = decimal(from: salePrice), sp > 0,
+              let pf = decimal(from: platformFee),
+              let pp = decimal(from: purchasePrice) else { return nil }
+        return sp - pp - pf
+    }
+
     private var isSaveDisabled: Bool {
         itemDescription.trimmed.isEmpty ||
             category.isEmpty ||
@@ -454,6 +504,10 @@ struct EditItemSheet: View {
                     decimal(from: listingPrice) == nil ||
                     decimal(from: listingPrice).map { $0 <= 0 } == true ||
                     selectedPlatforms.isEmpty
+            )) ||
+            ((status == .sold) && (
+                    decimal(from: salePrice).map { $0 > 0 } != true ||
+                    decimal(from: platformFee).map { $0 >= 0 } != true
             ))
     }
 
@@ -470,6 +524,10 @@ struct EditItemSheet: View {
             listingPrice = ""
         }
         selectedPlatforms = Set(item.listingPlatforms)
+        salePrice = item.salePrice.map { CurrencyFormatter.string(from: $0) } ?? ""
+        platformFee = item.platformFee.map { CurrencyFormatter.string(from: $0) } ?? ""
+        soldPlatform = item.soldPlatformName ?? ""
+        isShipped = item.shippedAt != nil
         notes = item.notes ?? ""
         photoData = item.photoData
     }
@@ -485,12 +543,20 @@ struct EditItemSheet: View {
         item.status = status
         item.listingPrice = status == .listed || status == .sold ? decimal(from: listingPrice) : nil
         item.listingPlatforms = status == .listed || status == .sold ? Array(selectedPlatforms) : []
-        if status != .sold {
+        if status == .sold {
+            item.salePrice = decimal(from: salePrice)
+            item.platformFee = decimal(from: platformFee)
+            item.profit = editLiveProfit
+            item.dateSold = item.dateSold ?? Date()
+            item.soldPlatformName = soldPlatform.isEmpty ? nil : soldPlatform
+            item.shippedAt = isShipped ? (item.shippedAt ?? Date()) : nil
+        } else {
             item.salePrice = nil
             item.platformFee = nil
             item.profit = nil
             item.dateSold = nil
             item.soldPlatformRaw = nil
+            item.shippedAt = nil
         }
         if status == .unlisted {
             item.dateListed = nil
@@ -690,6 +756,109 @@ private struct PhotoPickerActionSheet: ViewModifier {
                     photoData = ImageResizer.jpegData(from: image)
                 }
             }
+    }
+}
+
+private struct ItemPhotoHero: View {
+    let photoData: Data?
+    let action: () -> Void
+    var viewAction: (() -> Void)? = nil
+    var itemNumber: String? = nil
+    var brand: String? = nil
+    var itemDescription: String? = nil
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Button(action: image != nil ? (viewAction ?? action) : action) {
+                ZStack(alignment: .bottom) {
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 210)
+                            .clipped()
+                    } else {
+                        LinearGradient(
+                            colors: [Color.softPink.opacity(0.7), Color.butterYellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 210)
+                        .overlay {
+                            VStack(spacing: 10) {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 34, weight: .semibold))
+                                    .foregroundStyle(Color.hotPink)
+                                Text("Add Photo")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.hotPink)
+                            }
+                        }
+                    }
+
+                    if hasOverlay {
+                        LinearGradient(
+                            colors: [.clear, .black.opacity(0.65)],
+                            startPoint: .center,
+                            endPoint: .bottom
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 210)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let itemNumber {
+                                Text("#\(itemNumber)")
+                                    .font(.caption2.weight(.heavy))
+                                    .foregroundStyle(.white.opacity(0.75))
+                            }
+                            if let desc = itemDescription, desc.isEmpty == false {
+                                Text(desc)
+                                    .font(.headline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(2)
+                            }
+                            if let brand, brand.isEmpty == false {
+                                Text(brand)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 12)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(photoData == nil ? "Add item photo" : "View item photo")
+
+            if image != nil {
+                Button(action: action) {
+                    Image(systemName: "camera.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.hotPink, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                }
+                .buttonStyle(.plain)
+                .padding(10)
+                .accessibilityLabel("Change item photo")
+            }
+        }
+    }
+
+    private var hasOverlay: Bool {
+        itemNumber != nil || (itemDescription?.isEmpty == false) || (brand?.isEmpty == false)
+    }
+
+    private var image: UIImage? {
+        guard let photoData else { return nil }
+        return UIImage(data: photoData)
     }
 }
 

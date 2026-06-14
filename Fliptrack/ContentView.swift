@@ -40,6 +40,8 @@ struct RootView: View {
                 }
         }
         .tint(.hotPink)
+        .toolbarBackground(.white, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }
 
@@ -94,7 +96,7 @@ struct InventoryView: View {
     @State private var itemToDelete: Item?
     @State private var itemToUnlist: Item?
     @State private var searchText = ""
-    @State private var selectedFilter: InventoryFilter = .active
+    @State private var selectedFilter: InventoryFilter = .all
 
     private var visibleItems: [Item] {
         items
@@ -783,6 +785,10 @@ struct ItemRowView: View {
                         .background(Color.softPink.opacity(0.55), in: Capsule())
 
                     Spacer()
+
+                    if item.shippedAt != nil {
+                        ShippedBadge()
+                    }
                 }
             }
         }
@@ -901,6 +907,22 @@ struct StatusBadge: View {
         case .unlisted, .listed: .primaryText
         case .sold: .white
         }
+    }
+}
+
+struct ShippedBadge: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "shippingbox.fill")
+                .font(.system(size: 8, weight: .bold))
+            Text("Shipped")
+                .font(.caption2.weight(.heavy))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Color.profitGreen, in: Capsule())
+        .accessibilityLabel("Shipped")
     }
 }
 
@@ -1796,24 +1818,46 @@ struct RecentSaleRow: View {
                 .frame(width: 52, height: 52)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.itemDescription.isEmpty ? "Untitled item" : item.itemDescription)
-                    .font(.subheadline.weight(.heavy))
-                    .foregroundStyle(Color.primaryText)
-                    .lineLimit(1)
+                HStack {
+                    Text(item.itemDescription.isEmpty ? "Untitled item" : item.itemDescription)
+                        .font(.subheadline.weight(.heavy))
+                        .foregroundStyle(Color.primaryText)
+                        .lineLimit(1)
 
-                Text(saleDetail)
-                    .font(.caption)
-                    .foregroundStyle(Color.secondaryText)
-                    .lineLimit(1)
+                    Spacer(minLength: 8)
+
+                    Text(CurrencyFormatter.signedString(from: item.profit))
+                        .font(.subheadline.weight(.heavy))
+                        .foregroundStyle((item.profit ?? Decimal()) < 0 ? Color.lossRed : Color.profitGreen)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                HStack {
+                    Text(saleDetail)
+                        .font(.caption)
+                        .foregroundStyle(Color.secondaryText)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    if item.shippedAt != nil {
+                        Text("Shipped")
+                            .font(.caption2.weight(.heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.profitGreen, in: Capsule())
+                    } else {
+                        Text("Needs Shipping")
+                            .font(.caption2.weight(.heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.hotPink, in: Capsule())
+                    }
+                }
             }
-
-            Spacer(minLength: 10)
-
-            Text(CurrencyFormatter.signedString(from: item.profit))
-                .font(.subheadline.weight(.heavy))
-                .foregroundStyle((item.profit ?? Decimal()) < 0 ? Color.lossRed : Color.profitGreen)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
